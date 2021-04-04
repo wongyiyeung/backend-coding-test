@@ -115,30 +115,87 @@ module.exports = (db) => {
     });
   });
 
-  app.get('/rides', (req, res) => {
-    db.all('SELECT * FROM Rides', function(err, rows) {
-      if (err) {
-        logger.error('Unknown error', {
-          error_code: 'SERVER_ERROR',
-        });
-        return res.send({
-          error_code: 'SERVER_ERROR',
-          message: 'Unknown error',
-        });
-      }
+  //  app.get('/rides', (req, res) => {
+  //    db.all('SELECT * FROM Rides', function(err, rows) {
+  //      if (err) {
+  //        logger.error('Unknown error', {
+  //          error_code: 'SERVER_ERROR',
+  //        });
+  //        return res.send({
+  //          error_code: 'SERVER_ERROR',
+  //          message: 'Unknown error',
+  //        });
+  //      }
+  //
+  //      if (rows.length === 0) {
+  //        logger.error(noRideFoundErrorMsg, {
+  //          error_code: 'RIDES_NOT_FOUND_ERROR',
+  //        });
+  //        return res.send({
+  //          error_code: 'RIDES_NOT_FOUND_ERROR',
+  //          message: noRideFoundErrorMsg,
+  //        });
+  //      }
+  //
+  //      res.send(rows);
+  //    });
+  //  });
 
-      if (rows.length === 0) {
-        logger.error(noRideFoundErrorMsg, {
-          error_code: 'RIDES_NOT_FOUND_ERROR',
-        });
-        return res.send({
-          error_code: 'RIDES_NOT_FOUND_ERROR',
-          message: noRideFoundErrorMsg,
-        });
-      }
+  app.get('/rides', jsonParser, (req, res) => {
+    const afterId = Number(req.body.after_id);
+    const pageLimit = Number(req.body.page_limit);
 
-      res.send(rows);
-    });
+    if (Number.isInteger(afterId)) {
+      db.all(`SELECT * FROM Rides WHERE rideID>'${afterId}'
+      LIMIT '${pageLimit}'`, function(err, rows) {
+        if (err) {
+          logger.error('Unknown error', {
+            error_code: 'SERVER_ERROR',
+          });
+          return res.send({
+            error_code: 'SERVER_ERROR',
+            message: 'Unknown error',
+          });
+        }
+
+        if (rows.length === 0) {
+          logger.error(noRideFoundErrorMsg, {
+            error_code: 'RIDES_NOT_FOUND_ERROR',
+          });
+          return res.send({
+            error_code: 'RIDES_NOT_FOUND_ERROR',
+            message: noRideFoundErrorMsg,
+          });
+        }
+
+        res.send(rows);
+      });
+    } else {
+      db.all(`SELECT * FROM Rides 
+      LIMIT '${pageLimit}'`, function(err, rows) {
+        if (err) {
+          logger.error('Unknown error', {
+            error_code: 'SERVER_ERROR',
+          });
+          return res.send({
+            error_code: 'SERVER_ERROR',
+            message: 'Unknown error',
+          });
+        }
+
+        if (rows.length === 0) {
+          logger.error(noRideFoundErrorMsg, {
+            error_code: 'RIDES_NOT_FOUND_ERROR',
+          });
+          return res.send({
+            error_code: 'RIDES_NOT_FOUND_ERROR',
+            message: noRideFoundErrorMsg,
+          });
+        }
+
+        res.send(rows);
+      });
+    }
   });
 
   app.get('/rides/:id', (req, res) => {

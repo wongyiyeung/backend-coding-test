@@ -150,9 +150,12 @@ describe('API tests', () => {
   });
 
   describe('GET /rides', () => {
-    it('should fail to return all records from db', (done) => {
+    it('fail to get first 5 record from empty db', (done) => {
       request(app)
           .get('/rides')
+          .send({
+            page_limit: 5,
+          })
           .expect('Content-Type', /json/)
           .expect(200)
           .then((res) => {
@@ -204,9 +207,12 @@ describe('API tests', () => {
   });
 
   describe('GET /rides', () => {
-    it('should return all records from db', (done) => {
+    it('get first 5 record from db but return 1', (done) => {
       request(app)
           .get('/rides')
+          .send({
+            page_limit: 5,
+          })
           .expect('Content-Type', /json/)
           .expect(200)
           .then((res) => {
@@ -214,6 +220,49 @@ describe('API tests', () => {
             assert(Number.isInteger(Number(res.body[0].rideID)));
             rideId = Number(res.body[0].rideID);
             done();
+          })
+          .catch((err) => done(err));
+    });
+  });
+
+  describe('GET /rides', () => {
+    it('should add record to db and return rideID', (done) => {
+      // set up by adding 20 records
+      const values = [1.3521, 103.8198, 1.3421, 103.8198,
+        'mary', 'john', 'toyota'];
+      for (let i=0; i<20; ++i) {
+        db.run('INSERT INTO Rides(startLat, startLong,' +
+        ' endLat, endLong, riderName, driverName, driverVehicle)' +
+        ' VALUES (?, ?, ?, ?, ?, ?, ?)', values, function(err) {
+        });
+      }
+      let afterId = 0;
+      request(app)
+          .get('/rides')
+          .send({
+            page_limit: 5,
+          })
+          .expect('Content-Type', /json/)
+          .expect(200)
+          .then((res) => {
+            assert.strictEqual(res.body.length, 5);
+            assert(Number.isInteger(Number(res.body[0].rideID)));
+            rideId = Number(res.body[0].rideID);
+            afterId = Number(res.body[res.body.length - 1].rideID);
+
+            const requestBody = {after_id: afterId, page_limit: 5};
+            request(app)
+                .get('/rides')
+                .send(requestBody)
+                .expect('Content-Type', /json/)
+                .expect(200)
+                .then((res) => {
+                  assert.strictEqual(res.body.length, 5);
+                  assert(Number.isInteger(Number(res.body[0].rideID)));
+                  rideId = Number(res.body[0].rideID);
+                  done();
+                })
+                .catch((err) => done(err));
           })
           .catch((err) => done(err));
     });
