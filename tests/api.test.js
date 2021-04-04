@@ -1,9 +1,7 @@
 'use strict';
 
 const assert = require('assert');
-
 const request = require('supertest');
-const {isAssertionExpression} = require('typescript');
 
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database(':memory:');
@@ -12,6 +10,14 @@ const app = require('../src/app')(db);
 const buildSchemas = require('../src/schemas');
 
 let rideId;
+const startPoseErrorMsg = 'Start latitude and longitude must be between' +
+' -90 - 90 and -180 to 180 degrees respectively';
+const endPoseErrorMsg = 'End latitude and longitude must be between' +
+' -90 - 90 and -180 to 180 degrees respectively';
+const riderNameErrorMsg = 'Rider name must be a non empty string';
+const driverNameErrorMsg = 'Driver name must be a non empty string';
+const vehicleNameErrorMsg = 'Vehicle name must be a non empty string';
+const noRideFoundErrorMsg = 'Could not find any rides';
 
 describe('API tests', () => {
   before((done) => {
@@ -35,14 +41,6 @@ describe('API tests', () => {
     });
   });
 
-  // start_lat
-  // start_long
-  // end_lat
-  // end_long
-  // rider_name
-  // driver_name
-  // driver_vehicle
-
   describe('POST /rides', () => {
     it('should return rider name error', (done) => {
       request(app)
@@ -57,7 +55,7 @@ describe('API tests', () => {
           .expect(200)
           .then((res) => {
             assert.strictEqual(res.body.error_code, 'VALIDATION_ERROR');
-            assert.strictEqual(res.body.message, 'Rider name must be a non empty string');
+            assert.strictEqual(res.body.message, riderNameErrorMsg);
             done();
           })
           .catch((err) => done(err));
@@ -79,7 +77,7 @@ describe('API tests', () => {
           .expect(200)
           .then((res) => {
             assert.strictEqual(res.body.error_code, 'VALIDATION_ERROR');
-            assert.strictEqual(res.body.message, 'Driver name must be a non empty string');
+            assert.strictEqual(res.body.message, driverNameErrorMsg);
             done();
           })
           .catch((err) => done(err));
@@ -102,7 +100,7 @@ describe('API tests', () => {
           .expect(200)
           .then((res) => {
             assert.strictEqual(res.body.error_code, 'VALIDATION_ERROR');
-            assert.strictEqual(res.body.message, 'Vehicle name must be a non empty string');
+            assert.strictEqual(res.body.message, vehicleNameErrorMsg);
             done();
           })
           .catch((err) => done(err));
@@ -112,32 +110,42 @@ describe('API tests', () => {
   describe('POST /rides', () => {
     it('should return start pose error', (done) => {
       request(app)
-          .post('/rides', {
-            body: {
-              start_lat: 100.0,
-              start_long: 103.8198,
-              end_lat: 1.3421,
-              end_long: 103.8198,
-            },
+          .post('/rides')
+          .send({
+            start_lat: 100.0,
+            start_long: 103.8198,
+            end_lat: 1.3421,
+            end_long: 103.8198,
           })
           .expect('Content-Type', /json/)
-          .expect(200, done);
+          .expect(200)
+          .then((res) => {
+            assert.strictEqual(res.body.error_code, 'VALIDATION_ERROR');
+            assert.strictEqual(res.body.message, startPoseErrorMsg);
+            done();
+          })
+          .catch((err) => done(err));
     });
   });
 
   describe('POST /rides', () => {
     it('should return end pose error', (done) => {
       request(app)
-          .post('/rides', {
-            body: {
-              start_lat: 1.3521,
-              start_long: 103.8198,
-              end_lat: 100.0,
-              end_long: 103.8198,
-            },
+          .post('/rides')
+          .send({
+            start_lat: 1.3521,
+            start_long: 103.8198,
+            end_lat: 100.0,
+            end_long: 103.8198,
           })
           .expect('Content-Type', /json/)
-          .expect(200, done);
+          .expect(200)
+          .then((res) => {
+            assert.strictEqual(res.body.error_code, 'VALIDATION_ERROR');
+            assert.strictEqual(res.body.message, endPoseErrorMsg);
+            done();
+          })
+          .catch((err) => done(err));
     });
   });
 
@@ -149,7 +157,7 @@ describe('API tests', () => {
           .expect(200)
           .then((res) => {
             assert.strictEqual(res.body.error_code, 'RIDES_NOT_FOUND_ERROR');
-            assert.strictEqual(res.body.message, 'Could not find any rides');
+            assert.strictEqual(res.body.message, noRideFoundErrorMsg);
             done();
           })
           .catch((err) => done(err));
@@ -157,7 +165,7 @@ describe('API tests', () => {
   });
 
   describe('GET /rides/:id', () => {
-    it('should fail to find ride with matching id and not return any record', (done) => {
+    it('fail to find ride with matching id, return no records', (done) => {
       rideId = 3;
       request(app)
           .get('/rides/' + rideId)
@@ -165,7 +173,7 @@ describe('API tests', () => {
           .expect(200)
           .then((res) => {
             assert.strictEqual(res.body.error_code, 'RIDES_NOT_FOUND_ERROR');
-            assert.strictEqual(res.body.message, 'Could not find any rides');
+            assert.strictEqual(res.body.message, noRideFoundErrorMsg);
             done();
           })
           .catch((err) => done(err));
